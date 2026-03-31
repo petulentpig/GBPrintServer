@@ -41,15 +41,13 @@ def _draw_separator(draw, y, width, margin):
     draw.line([(margin, y), (width - margin, y)], fill="#CCCCCC", width=2)
 
 
-def generate_qr(url: str, order_number: str, customer_name: str = "", order_date: str = "") -> str:
-    """Generate a single-page PDF with order details, QR code, and barcode."""
-
+def _render_label(order_number: str, customer_name: str = "", order_date: str = "") -> Image.Image:
+    """Render the label canvas with order details and barcode."""
     title_font, label_font, detail_font = _load_fonts()
 
     canvas = Image.new("RGB", (PAGE_WIDTH, PAGE_HEIGHT), "white")
     draw = ImageDraw.Draw(canvas)
     usable_width = PAGE_WIDTH - 2 * MARGIN
-    center_x = PAGE_WIDTH // 2
     y = MARGIN
 
     # ── Store name ──
@@ -109,7 +107,20 @@ def generate_qr(url: str, order_number: str, customer_name: str = "", order_date
     bc_w, bc_h = barcode_img.size
     canvas.paste(barcode_img, ((PAGE_WIDTH - bc_w) // 2, y))
 
-    # ── Save as single-page PDF ──
+    return canvas
+
+
+def generate_label_png(order_number: str, customer_name: str = "", order_date: str = "") -> bytes:
+    """Generate the label as PNG bytes (for Slack upload)."""
+    canvas = _render_label(order_number, customer_name, order_date)
+    png_buffer = io.BytesIO()
+    canvas.save(png_buffer, format="PNG")
+    return png_buffer.getvalue()
+
+
+def generate_qr(url: str, order_number: str, customer_name: str = "", order_date: str = "") -> str:
+    """Generate a single-page PDF with order details and barcode, return as base64."""
+    canvas = _render_label(order_number, customer_name, order_date)
     pdf_buffer = io.BytesIO()
     canvas.save(pdf_buffer, format="PDF", resolution=200)
     return base64.b64encode(pdf_buffer.getvalue()).decode("ascii")

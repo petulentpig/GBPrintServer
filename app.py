@@ -5,7 +5,7 @@ import os
 
 from flask import Flask, request, jsonify
 
-from qr_generator import generate_qr
+from qr_generator import generate_qr, generate_label_png
 from printnode_client import print_qr
 from slack_notify import send_notification
 
@@ -53,13 +53,14 @@ def handle_order():
 
     logger.info(f"New order #{order_number} from {customer_name} for {currency} {total}")
 
-    # Generate QR code and barcode
+    # Generate label (PDF for printing, PNG for Slack)
     try:
         pdf_b64 = generate_qr(order_url, order_number, customer_name, order_date)
-        logger.info(f"QR code generated for order #{order_number}")
+        label_png = generate_label_png(order_number, customer_name, order_date)
+        logger.info(f"Label generated for order #{order_number}")
     except Exception:
-        logger.exception("Failed to generate QR code")
-        return jsonify({"error": "QR generation failed"}), 500
+        logger.exception("Failed to generate label")
+        return jsonify({"error": "Label generation failed"}), 500
 
     # Print via PrintNode
     try:
@@ -68,9 +69,9 @@ def handle_order():
     except Exception:
         logger.exception("Failed to submit print job")
 
-    # Slack notification
+    # Slack notification with label image
     try:
-        send_notification(order_number, customer_name, f"{currency} {total}", order_url)
+        send_notification(order_number, customer_name, f"{currency} {total}", order_url, label_png)
         logger.info(f"Slack notification sent for order #{order_number}")
     except Exception:
         logger.exception("Failed to send Slack notification")
