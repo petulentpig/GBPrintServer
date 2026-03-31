@@ -1,7 +1,9 @@
+import logging
 import os
 
 import requests
 
+logger = logging.getLogger(__name__)
 
 SLACK_UPLOAD_URL = "https://slack.com/api/files.upload"
 
@@ -17,6 +19,7 @@ def send_notification(
     token = os.environ.get("SLACK_BOT_TOKEN")
     channel = os.environ.get("SLACK_CHANNEL")
     if not token or not channel:
+        logger.warning(f"Slack not configured: token={'set' if token else 'MISSING'}, channel={'set' if channel else 'MISSING'}")
         return
 
     comment = (
@@ -55,3 +58,8 @@ def send_notification(
         )
 
     resp.raise_for_status()
+    result = resp.json()
+    if not result.get("ok"):
+        logger.error(f"Slack API error: {result.get('error', 'unknown')} - response: {result}")
+        raise RuntimeError(f"Slack API error: {result.get('error')}")
+    logger.info(f"Slack API success for order #{order_number}")
