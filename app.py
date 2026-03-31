@@ -33,6 +33,12 @@ def handle_order():
 
     data = request.get_json(force=True)
 
+    # Only process orders from the Online Store channel
+    source_name = data.get("source_name", "")
+    if source_name != "web":
+        logger.info(f"Ignoring order from channel: {source_name}")
+        return jsonify({"status": "skipped", "reason": f"channel: {source_name}"}), 200
+
     order_number = str(data.get("order_number", data.get("name", "unknown")))
     order_id = data.get("id")
     customer = data.get("customer", {})

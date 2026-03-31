@@ -5,9 +5,10 @@ Shopify webhook listener that automatically prints a QR code for each new order 
 ## How it works
 
 1. Shopify sends an `orders/create` webhook to this server
-2. Server generates a QR code linking to the order admin page
-3. QR code is printed via PrintNode (cloud printing)
-4. A Slack notification is sent with order details
+2. Server filters for **Online Store** orders only (ignores POS, draft orders, etc.)
+3. Server generates a QR code linking to the order admin page
+4. QR code is printed via PrintNode (cloud printing)
+5. A Slack notification is sent with order details
 
 ## Setup
 
@@ -16,10 +17,11 @@ Shopify webhook listener that automatically prints a QR code for each new order 
 | Variable | Description |
 |---|---|
 | `SHOPIFY_WEBHOOK_SECRET` | Shopify webhook HMAC secret |
-| `SHOPIFY_STORE_URL` | Your store domain (e.g. `mystore.myshopify.com`) |
+| `SHOPIFY_STORE_DOMAIN` | Your store domain (e.g. `mystore.myshopify.com`) |
 | `PRINTNODE_API_KEY` | PrintNode API key |
 | `PRINTNODE_PRINTER_ID` | PrintNode printer ID |
-| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL |
+| `SLACK_BOT_TOKEN` | Slack bot OAuth token |
+| `SLACK_CHANNEL` | Slack channel ID for notifications |
 
 ### Local Development
 
