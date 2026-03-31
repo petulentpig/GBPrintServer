@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -57,16 +58,15 @@ def send_notification(
         file_id = upload_info["file_id"]
 
         # Step 2: Upload the file bytes to the provided URL
-        resp = requests.post(upload_url, files={"file": (filename, label_png, "image/png")}, timeout=15)
+        resp = requests.post(upload_url, data=label_png, headers={"Content-Type": "application/octet-stream"}, timeout=15)
         resp.raise_for_status()
 
         # Step 3: Complete the upload and share to channel
-        import json
         _slack_post(
             "files.completeUploadExternal",
             token,
-            json={
-                "files": [{"id": file_id, "title": f"Order #{order_number}"}],
+            data={
+                "files": json.dumps([{"id": file_id, "title": f"Order #{order_number}"}]),
                 "channel_id": channel,
                 "initial_comment": comment,
             },
