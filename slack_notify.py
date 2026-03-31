@@ -5,7 +5,19 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SLACK_UPLOAD_URL = "https://slack.com/api/files.upload"
+SLACK_API = "https://slack.com/api"
+
+
+def _slack_post(endpoint: str, token: str, **kwargs) -> dict:
+    """Make a Slack API call and verify the response."""
+    headers = kwargs.pop("headers", {})
+    headers["Authorization"] = f"Bearer {token}"
+    resp = requests.post(f"{SLACK_API}/{endpoint}", headers=headers, timeout=15, **kwargs)
+    resp.raise_for_status()
+    result = resp.json()
+    if not result.get("ok"):
+        raise RuntimeError(f"Slack {endpoint} error: {result.get('error')}")
+    return result
 
 
 def send_notification(
@@ -19,7 +31,10 @@ def send_notification(
     token = os.environ.get("SLACK_BOT_TOKEN")
     channel = os.environ.get("SLACK_CHANNEL")
     if not token or not channel:
-        logger.warning(f"Slack not configured: token={'set' if token else 'MISSING'}, channel={'set' if channel else 'MISSING'}")
+        logger.warning(
+            f"Slack not configured: token={'set' if token else 'MISSING'}, "
+            f"channel={'set' if channel else 'MISSING'}"
+        )
         return
 
     comment = (
@@ -29,37 +44,39 @@ def send_notification(
         f"<{order_url}|View Order>"
     )
 
-    headers = {"Authorization": f"Bearer {token}"}
-
     if label_png:
-        # Upload the label image with order details as comment
-        resp = requests.post(
-            SLACK_UPLOAD_URL,
-            headers=headers,
-            data={
-                "channels": channel,
+        filename = f"order-{order_number}.png"
+
+        # Step 1: Get an upload URL from Slack
+        upload_info = _slack_post(
+            "files.getUploadURLExternal",
+            token,
+            data={"filename": filename, "length": len(label_png)},
+        )
+        upload_url = upload_info["upload_url"]
+        file_id = upload_info["file_id"]
+
+        # Step 2: Upload the file bytes to the provided URL
+        resp = requests.post(upload_url, files={"file": (filename, label_png, "image/png")}, timeout=15)
+        resp.raise_for_status()
+
+        # Step 3: Complete the upload and share to channel
+        import json
+        _slack_post(
+            "files.completeUploadExternal",
+            token,
+            json={
+                "files": [{"id": file_id, "title": f"Order #{order_number}"}],
+                "channel_id": channel,
                 "initial_comment": comment,
-                "filename": f"order-{order_number}.png",
-                "title": f"Order #{order_number}",
             },
-            files={"file": (f"order-{order_number}.png", label_png, "image/png")},
-            timeout=15,
         )
     else:
         # Fallback: text-only message
-        resp = requests.post(
-            "https://slack.com/api/chat.postMessage",
-            headers=headers,
-            json={
-                "channel": channel,
-                "text": comment,
-            },
-            timeout=10,
+        _slack_post(
+            "chat.postMessage",
+            token,
+            json={"channel": channel, "text": comment},
         )
 
-    resp.raise_for_status()
-    result = resp.json()
-    if not result.get("ok"):
-        logger.error(f"Slack API error: {result.get('error', 'unknown')} - response: {result}")
-        raise RuntimeError(f"Slack API error: {result.get('error')}")
-    logger.info(f"Slack API success for order #{order_number}")
+    logger.info(f"Slack notification sent for order #{order_number}")
