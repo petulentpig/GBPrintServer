@@ -17,6 +17,7 @@ def _slack_post(endpoint: str, token: str, **kwargs) -> dict:
     resp.raise_for_status()
     result = resp.json()
     if not result.get("ok"):
+        logger.error(f"Slack {endpoint} full response: {result}")
         raise RuntimeError(f"Slack {endpoint} error: {result.get('error')}")
     return result
 
@@ -62,11 +63,13 @@ def send_notification(
         resp.raise_for_status()
 
         # Step 3: Complete the upload and share to channel
+        complete_headers = {"Content-Type": "application/json; charset=utf-8"}
         _slack_post(
             "files.completeUploadExternal",
             token,
-            data={
-                "files": json.dumps([{"id": file_id, "title": f"Order #{order_number}"}]),
+            headers=complete_headers,
+            json={
+                "files": [{"id": file_id, "title": f"Order #{order_number}"}],
                 "channel_id": channel,
                 "initial_comment": comment,
             },
