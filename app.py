@@ -46,14 +46,16 @@ def handle_order():
     total = data.get("total_price", "0.00")
     currency = data.get("currency", "USD")
 
+    order_date = data.get("created_at", "")
+
     store_url = os.environ.get("SHOPIFY_STORE_DOMAIN", "")
     order_url = f"https://{store_url}/admin/orders/{order_id}"
 
     logger.info(f"New order #{order_number} from {customer_name} for {currency} {total}")
 
-    # Generate QR code
+    # Generate QR code and barcode
     try:
-        pdf_b64 = generate_qr(order_url, order_number)
+        pdf_b64 = generate_qr(order_url, order_number, customer_name, order_date)
         logger.info(f"QR code generated for order #{order_number}")
     except Exception:
         logger.exception("Failed to generate QR code")
