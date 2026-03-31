@@ -4,7 +4,6 @@ from datetime import datetime
 
 import barcode
 from barcode.writer import ImageWriter
-import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
 # Letter page at 200 DPI: 8.5" x 11"
@@ -87,22 +86,6 @@ def generate_qr(url: str, order_number: str, customer_name: str = "", order_date
     y += 10
     _draw_separator(draw, y, PAGE_WIDTH, MARGIN)
     y += 50
-
-    # ── QR Code ──
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(url)
-    qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-
-    max_qr = min(usable_width, 700)
-    qr_img = qr_img.resize((max_qr, max_qr), Image.NEAREST)
-    canvas.paste(qr_img, ((PAGE_WIDTH - max_qr) // 2, y))
-    y += max_qr + 50
 
     # ── Code 128 Barcode ──
     code128 = barcode.get("code128", str(order_number), writer=ImageWriter())
